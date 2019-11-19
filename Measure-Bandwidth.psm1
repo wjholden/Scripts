@@ -30,6 +30,9 @@
             [System.Net.Sockets.SocketOptionName]::ReceiveBuffer,
             $BufferSize);
 
+        # This script does not halt with CTRL+C. I had thought of adding an infinite loop here, but since you
+        # cannot exit gracefully you can instead do repeated tests with something like this:
+        # (1..3) | % { ttcp -r } | ft
         while ($client.Connected) {
             $ip = $client.Client.RemoteEndPoint;
             $stream = $client.GetStream();
@@ -71,7 +74,48 @@
 
     # https://mcpmag.com/articles/2012/12/11/pshell-order.aspx
     # RFC 1177: 1 KB = 2^10 bytes, 1 MB = 2^20 bytes.
-    [pscustomobject][ordered]@{Endpoint=$ip; Milliseconds=[math]::Round($seconds * 1000); Bytes=$totalBytes; KBps=[math]::Round($totalBytes / $seconds / 1024); Mbps=[math]::Round($totalBytes / $seconds * 8 / 1024 / 1024)};
+    [pscustomobject]@{Endpoint=$ip; Milliseconds=[math]::Round($seconds * 1000); Bytes=$totalBytes; KBps=[math]::Round($totalBytes / $seconds / 1024); Mbps=[math]::Round($totalBytes / $seconds * 8 / 1024 / 1024)};
+
+<#
+.SYNOPSIS
+
+Tests TCP throughput.
+
+.DESCRIPTION
+
+Measure-Bandwidth is a pure-PowerShell reimplementation of Terry Slattery's TTCP
+program (https://www.usenix.org/legacy/publications/java/usingjava7.html). The
+program simply opens a client or server socket and either transmits or receives
+a configurable number of bytes. The total volume of the TCP payload could be
+computed from BufferSize * BufferCount. This amount does not account for the
+overhead associated with TCP headers, IP headers, and any additional encapsulation.
+Nonetheless, anomalous bandwidth estimates may be useful to proactively identify
+problematic devices.
+
+This program should be compatible with the hidden "ttcp" in Cisco IOS. (The ttcp
+command may have been removed in IOS-XE). It is compatible with Slattery's
+Java TTCP implementation (http://www.ccci.com/tools/ttcp/).
+
+William John Holden (https://wjholden.com)
+
+This code is licensed under the MIT license.
+
+.LINK
+
+https://github.com/wjholden/Scripts/
+
+.EXAMPLE
+
+PS> ttcp -r
+
+Receive input (from the first transmitter to connect), return statistics, and halt.
+
+.EXAMPLE
+
+PS> ttcp -t localhost
+
+Transmit the default volume of bytes to the local host, return statistics, and halt.
+#>
 }
 
 Set-Alias -Name ttcp -Value Measure-Bandwidth
