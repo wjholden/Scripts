@@ -1,10 +1,10 @@
 ﻿function Find-PathMTU {
     param(
         [parameter(Mandatory=$true, ValueFromPipeline=$true, Position=0)][string]$TargetName,
-        [int]$Timeout = 200,
-        [int]$Repeat = 2,
-        [int]$Minimum = 68,
-        [int]$Maximum = 1500
+        [int]$Timeout = 500,
+        [int]$Repeat = 1,
+        [ValidateRange(1,[int]::MaxValue)][int]$Minimum = 68,
+        [ValidateRange(1,[int]::MaxValue)][int]$Maximum = 1500
     )
 
     function pingtest {
@@ -27,8 +27,12 @@
 
         $mid = [math]::Round(($hi+$lo)/2);
 
-        if (($lo -eq $hi) -or -not (pingtest $lo)) {
-            # Either the lower bound is unusable or maybe the target does not/cannot respond.
+        if ($hi -lt $lo) {
+            throw "The upper bound is less than the lower bound.";
+        }
+
+        if ($lo -eq $hi) {
+            # Base case. We must only get here from a successful ping of size $lo.
             return $lo;
         } elseif (pingtest $hi) {
             # The upper bound works. We're done!
@@ -44,6 +48,9 @@
         }
     }
 
+    if (-not (pingtest $Minimum)) {
+        throw "MTU to $TargetName cannot be determined from $Minimum";
+    }
     return divide $Minimum $Maximum;
 <#
 .SYNOPSIS
@@ -52,7 +59,7 @@ Discovers path MTU using ping tests.
 
 .DESCRIPTION
 
-Find-PathMTU (or its alias "mtu") performs a binary search to discover the Internet Protocol (IP) maximum transmission unit (MTU) along the path of routers to the destination by calling the ping command. Despite low O(log n) computational complexity, this program is slow.
+Find-PathMTU (or its alias "mtu") performs a binary search to discover the Internet Protocol (IP) maximum transmission unit (MTU) along the path of routers to the destination by calling the ping command. The Windows ping program pauses between messages, which makes this O(log n) program slow when -Repeat is greater than 1.
 
 Users of PowerShell 6 and 7 should instead use the Test-Connection cmdlet with the -MTUSizeDetect parameter.
 
