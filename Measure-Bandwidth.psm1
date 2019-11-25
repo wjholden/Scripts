@@ -83,18 +83,9 @@ Tests TCP throughput.
 
 .DESCRIPTION
 
-Measure-Bandwidth is a pure-PowerShell reimplementation of Terry Slattery's TTCP
-program (https://www.usenix.org/legacy/publications/java/usingjava7.html). The
-program simply opens a client or server socket and either transmits or receives
-a configurable number of bytes. The total volume of the TCP payload could be
-computed from BufferSize * BufferCount. This amount does not account for the
-overhead associated with TCP headers, IP headers, and any additional encapsulation.
-Nonetheless, anomalous bandwidth estimates may be useful to proactively identify
-problematic devices.
+Measure-Bandwidth is a pure-PowerShell reimplementation of Terry Slattery's TTCP program (https://www.usenix.org/legacy/publications/java/usingjava7.html). The program simply opens a client or server socket and either transmits or receives a configurable number of bytes. The total volume of the TCP payload could be computed from BufferSize * BufferCount. This amount does not account for the overhead associated with TCP headers, IP headers, and any additional encapsulation. Nonetheless, anomalous bandwidth estimates may be useful to proactively identify problematic devices.
 
-This program should be compatible with the hidden "ttcp" in Cisco IOS. (The ttcp
-command may have been removed in IOS-XE). It is compatible with Slattery's
-Java TTCP implementation (http://www.ccci.com/tools/ttcp/).
+This program should be compatible with the hidden "ttcp" in Cisco IOS. (The ttcp command may have been removed in IOS-XE). It is compatible with Slattery's Java TTCP implementation (http://www.ccci.com/tools/ttcp/).
 
 William John Holden (https://wjholden.com)
 
