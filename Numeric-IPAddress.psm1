@@ -42,3 +42,9 @@ function Convert-IntegerToIP() {
     }
 }
 
+function Get-Mask {
+    param([parameter(Mandatory=$true)][ValidateRange(0,32)][int]$PrefixLength)
+    return Convert-IntegerToIP (0xffffffff -band (0xffffffff00000000 -shr $PrefixLength))
+}
+
+Set-Alias -Name cidr -Value Get-Mask
