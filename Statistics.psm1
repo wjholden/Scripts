@@ -1,4 +1,25 @@
-﻿function map([scriptblock] $f, $a) {
+﻿# Basic statistics functions built on lightweight functional programming idioms.
+# William John Holden (2020)
+# https://github.com/wjholden/Scripts/
+#
+# Examples:
+# > mean (0..100)
+# 50
+#
+# > (0..20) | % { sum (0..$_) }
+# (Triangular numbers; see https://oeis.org/A000217)
+#
+# > (0..10) | % { dbinom $_ 10 (1/6) }
+# Compare to dbinom(x = 0:10, size = 10, prob = 1/6) in R.
+#
+# > (0..10) | % { pbinom $_ 10 (1/6) }
+# Compare to pbinom(q = 0:10, size = 10, prob = 1/6) in R.
+#
+# > (-3,-2.5,-2,-1.5,-1,-.5,0,.5,1,1.5,2,2.5,3) | % { [System.Tuple]::Create($_, (dnorm $_), (pnorm $_))}
+# Compare to data.frame(x = seq(-3,3,.5), pdf = dnorm(seq(-3,3,.5)), cdf = pnorm(seq(-3,3,.5))) in R.
+# You can tune the -lower and -subdivisions parameters on pnorm for accuracy and performance.
+
+function map([scriptblock] $f, $a) {
     return $a | ForEach-Object { $f.Invoke($_) }
 }
 
@@ -98,28 +119,7 @@ function pnorm {
         # I'll cheat. This one is really obvious and the numerical integration misses it.
         return .5;
     } else {
-        # if this is negative it could be because the integral is being computed from high to low.
+        # If this is negative it could be because the integral is being computed from high to low.
         return Invoke-Command -ScriptBlock $integral -ArgumentList @({ dnorm $_ $mean $sd }, $lower, $q, $subdivisions);
     }
 }
-
-# This works surprisingly better than I had expected. You can increase the precision by turning up the number of subdivisions during integration.
-#
-# A funny bug is that the numerical integration misses normcdf(x = mu) = 1/2.
-#
-# Examples:
-# > mean (0..100)
-# 50
-#
-# > (0..20) | % { sum (0..$_) }
-# (Triangular numbers; see https://oeis.org/A000217)
-#
-# > (0..10) | % { dbinom $_ 10 (1/6) }
-# Compare to dbinom(x = 0:10, size = 10, prob = 1/6) in R.
-#
-# > (0..10) | % { pbinom $_ 10 (1/6) }
-# Compare to pbinom(q = 0:10, size = 10, prob = 1/6) in R.
-#
-# > (-3,-2.5,-2,-1.5,-1,-.5,0,.5,1,1.5,2,2.5,3) | % { [System.Tuple]::Create($_, (dnorm $_), (pnorm $_))}
-# Compare to data.frame(x = seq(-3,3,.5), pdf = dnorm(seq(-3,3,.5)), cdf = pnorm(seq(-3,3,.5))) in R.
-# You can tune the -lower and -subdivisions parameters on pnorm for accuracy and performance.
