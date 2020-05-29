@@ -31,6 +31,8 @@ function reduce([scriptblock] $f, $a, $i) {
     return $value;
 }
 
+# There is a bug here that I don't want to fix. This seq() implementation works
+# correctly with the current integrate() implementation. Don't use this function.
 function seq($from, $to, $length) {
     $dx = ($to - $from) / $length;
     return map {$from + ($dx * $_)} (0..$length);
