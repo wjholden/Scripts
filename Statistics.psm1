@@ -19,23 +19,33 @@
 # Compare to data.frame(x = seq(-3,3,.5), pdf = dnorm(seq(-3,3,.5)), cdf = pnorm(seq(-3,3,.5))) in R.
 # You can tune the -lower and -subdivisions parameters on pnorm for accuracy and performance.
 
-function map([scriptblock] $f, $a) {
-    return $a | ForEach-Object { $f.Invoke($_) }
-}
-
 function reduce([scriptblock] $f, $a, $i) {
     $value = $i;
     foreach($x in $a) {
-        $value = Invoke-Command -ScriptBlock $f -ArgumentList @($value, $x);
+        $r = Invoke-Command -ScriptBlock $f -ArgumentList @($value, $x);
+        $value = $r
     }
     return $value;
 }
 
-# There is a bug here that I don't want to fix. This seq() implementation works
-# correctly with the current integrate() implementation. Don't use this function.
-function seq($from, $to, $length) {
-    $dx = ($to - $from) / $length;
-    return map {$from + ($dx * $_)} (0..$length);
+function map([scriptblock] $f, $a) {
+    # I tried to implement this from reduce
+    # (see https://jrsinclair.com/articles/2019/functional-js-do-more-with-reduce/)
+    # but I keep getting surprised by weird lexical lexical scoping bugs.
+    # It should be something like: 
+    # return reduce { param([System.Object[]] $acc, $i) $acc += $f.Invoke($i); return $acc; } $a @()
+    # but this does not actually work.
+    return $a | ForEach-Object { $f.Invoke($_) }
+}
+
+function seq {
+    param(
+        [Parameter(Mandatory=$true, Position=0)][float]$from,
+        [Parameter(Mandatory=$true, Position=1)][float]$to,
+        [Parameter(Mandatory=$false, Position=2)][int]$length = [math]::Abs([math]::Ceiling($to - $from + 1)),
+        [Parameter(Mandatory=$false)][float]$by = (($to - $from) / ($length - 1))
+    )
+    return map { param($x) $x * $by + $from } (0..($length - 1))
 }
 
 function sum($a) {
@@ -79,7 +89,7 @@ function dbinom([int]$x, [int]$size, [float]$prob) {
 }
 
 function pbinom([int]$q, [int]$size, [float]$prob) {
-    return sum(map {dbinom $_ $size $prob} (0..$q));
+    return sum(map {param($x) dbinom $x $size $prob} (0..$q));
 }
 
 function dnorm {
@@ -101,7 +111,7 @@ function integrate {
     )
 
     $dx = ($upper - $lower) / $subdivisions;
-    $domain = seq $lower $upper $subdivisions;
+    $domain = seq $lower $upper -length ($subdivisions + 1);
     $range = map $f $domain;
     $trapezoids = map {param($i) $dx * ($range[$i - 1] + $range[$i]) / 2} (1..$subdivisions);
     return sum $trapezoids;
@@ -122,6 +132,6 @@ function pnorm {
         return .5;
     } else {
         # If this is negative it could be because the integral is being computed from high to low.
-        return Invoke-Command -ScriptBlock $integral -ArgumentList @({ dnorm $_ $mean $sd }, $lower, $q, $subdivisions);
+        return Invoke-Command -ScriptBlock $integral -ArgumentList @({ param($x) dnorm $x $mean $sd }, $lower, $q, $subdivisions);
     }
 }
