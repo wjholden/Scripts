@@ -48,3 +48,9 @@ function Get-Mask {
 }
 
 Set-Alias -Name cidr -Value Get-Mask
+
+function Get-NetworkAddress ($a, $b) {
+    (Convert-IPtoInteger $a) -band (Convert-IPtoInteger $b) | Convert-IntegerToIP
+}
+
+New-Alias -Name network -Value Get-NetworkAddress
