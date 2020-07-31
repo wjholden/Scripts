@@ -43,11 +43,11 @@ function Measure-Jitter {
 <#
 .SYNOPSIS
 
-Measures the variation of network latency ("jitter") to a remote host using the built-in ping command.
+Computes statistics on network latency ("jitter") to a remote host using the built-in ping command.
 
 .DESCRIPTION
 
-Measure-Jitter computes the coefficient of variation (CV) to compare jitter among remote devices. A low CV indicates a "smooth" network with consistent latency. Lower CV is better.
+Measure-Jitter computes the mean, standard deviation, and coefficient of variation (CV) of jitter to among remote devices. A low CV indicates a "smooth" network with consistent latency. Lower CV is better.
 
 William John Holden (https://wjholden.com)
 
@@ -56,6 +56,12 @@ William John Holden (https://wjholden.com)
 Get-ADComputer -Filter * | Get-Random -Count 10 | ForEach-Object { Measure-Jitter -ComputerName $_.Name -Count 10 }
 
 Measure jitter to 10 hosts randomly selected from Active Directory. These measurements occur in series, so this is slow.
+
+.EXAMPLE
+
+Resolve-DnsName $env:USERDNSDOMAIN | % { Measure-Jitter $_.IPAddress } | ft ComputerName, Mean, CV
+
+Measure jitter to all domain controllers in series.
 
 .EXAMPLE
 
@@ -69,6 +75,8 @@ $jobs = Get-ADComputer -Filter * | ForEach-Object {
 Receive-Job -Job $jobs -Keep | Sort-Object CV -Descending | Select-Object * -ExcludeProperty RunspaceId | Format-Table
 
 Measure jitter, in parallel, to all hosts in Active Directory.
+
+I have tried and failed to pass the Measure-Jitter function lambda as a parameter to Start-Job. You can paste the Measure-Jitter function definition into the -InitializationScript block if loading modules is problematic.
 
 #>
 }
