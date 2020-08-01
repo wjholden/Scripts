@@ -68,15 +68,21 @@ Measure jitter to all domain controllers in series.
 $jobs = Get-ADComputer -Filter * | ForEach-Object {
     Start-Job -ArgumentList $_.Name -ScriptBlock {
         param($ComputerName)
-        Import-Module L:\Measure-Jitter.psm1;
+        Import-Module .\Measure-Jitter.psd1;
         Measure-Jitter -ComputerName $ComputerName -Count 100
     }
 }
 Receive-Job -Job $jobs -Keep | Sort-Object CV -Descending | Select-Object * -ExcludeProperty RunspaceId | Format-Table
 
-Measure jitter, in parallel, to all hosts in Active Directory.
+Measure jitter, in parallel, to all hosts in Active Directory. Creating jobs is not fast. See the next example if you are using PowerShell 7.
 
 I have tried and failed to pass the Measure-Jitter function lambda as a parameter to Start-Job. You can paste the Measure-Jitter function definition into the -InitializationScript block if loading modules is problematic.
+
+.EXAMPLE
+
+@("wjholden.com", "google.com", "facebook.com", "cisco.com", "amazon.com") | foreach -Parallel { Import-Module .\Measure-Jitter.psd1; Measure-Jitter $_ } | ft
+
+Measure jitter using PowerShell 7 parallel execution.
 
 #>
 }
