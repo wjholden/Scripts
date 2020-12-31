@@ -7,17 +7,22 @@
         [string]$IPv6Address,
 
         [Parameter(Mandatory=$true, Position=1)]
-        [string]$Message
+        [string]$Message,
+
+        [Parameter(Mandatory=$false, Position=2)]
+        [int]$Port = 514
     )
 
     $af = -1;
     if ($IPAddress) {
         $af = [System.Net.Sockets.AddressFamily]::InterNetwork;
-        $ep = New-Object IPEndPoint ([IPAddress]::Parse($IPAddress), 514);
+        $addr = $IPAddress;
     } else {
         $af = [System.Net.Sockets.AddressFamily]::InterNetworkV6;
-        $ep = New-Object IPEndPoint ([IPAddress]::Parse($IPv6Address), 514);
+        $addr = $IPv6Address;
     }
+
+    $ep = New-Object IPEndPoint ([IPAddress]::Parse($IPv6Address), $Port);
 
     try
     {
@@ -28,7 +33,7 @@
     }
     catch [System.Net.Sockets.SocketException]
     {
-        Write-Error "Unable to send Syslog message to $IPAddress";
+        Write-Error "Unable to send Syslog message to $addr";
     }
     finally
     {
@@ -42,7 +47,10 @@ function Receive-Syslog {
         [string]$IPAddress,
 
         [Parameter(Mandatory=$true, ParameterSetName="IPv6 Address", Position=0)]
-        [string]$IPv6Address
+        [string]$IPv6Address,
+
+        [Parameter(Mandatory=$false, Position=1)]
+        [int]$Port = 514
     )
 
     if ($IPAddress) {
@@ -57,7 +65,7 @@ function Receive-Syslog {
 
     try
     {
-        $socket = New-Object System.Net.Sockets.UdpClient @(514, $af);
+        $socket = New-Object System.Net.Sockets.UdpClient @($Port, $af);
         $socket.JoinMulticastGroup($addr);
         $bytes = $socket.Receive([ref] $ep);
         [System.Text.Encoding]::ASCII.GetString($bytes);
