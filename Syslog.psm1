@@ -22,7 +22,7 @@
         $addr = $IPv6Address;
     }
 
-    $ep = New-Object IPEndPoint ([IPAddress]::Parse($IPv6Address), $Port);
+    $ep = New-Object IPEndPoint ([IPAddress]::Parse($addr), $Port);
 
     try
     {
