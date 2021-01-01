@@ -50,7 +50,13 @@ function Receive-Syslog {
         [string]$IPv6Address,
 
         [Parameter(Mandatory=$false, Position=1)]
-        [int]$Port = 514
+        [int]$Port = 514,
+
+        [Parameter(Mandatory=$false)]
+        [switch]$Listen = $false,
+
+        [Parameter(Mandatory=$false)]
+        [int]$Timeout = 0
     )
 
     if ($IPAddress) {
@@ -61,17 +67,43 @@ function Receive-Syslog {
         $af = [System.Net.Sockets.AddressFamily]::InterNetworkV6;
     }
 
+    if ($Listen -and $Timeout -eq 0) {
+        # CTRL+C does not work when listening for input.
+        # If the user specified to listen but did not give a timeout then
+        # we set it to 100 milliseconds.
+        # Exceptions from the timeout will be ignored in the inner catch statement below.
+        $Timeout = 100;
+    }
+
     $ep = New-Object IPEndPoint ([IPAddress]::Any, 0);
 
     try
     {
         $socket = New-Object System.Net.Sockets.UdpClient @($Port, $af);
         $socket.JoinMulticastGroup($addr);
-        $bytes = $socket.Receive([ref] $ep);
-        [System.Text.Encoding]::ASCII.GetString($bytes);
+        $socket.Client.ReceiveTimeout = $Timeout;
+
+        do
+        {
+            try
+            {
+                $bytes = $socket.Receive([ref] $ep);
+                [System.Text.Encoding]::ASCII.GetString($bytes);
+            }
+            catch [System.Net.Sockets.SocketException]
+            {
+                # suppress timeout errors
+                if ($Listen -eq $false)
+                {
+                    Write-Error "Unable to receive Syslog messages on $addr";
+                }
+            }
+        }
+        while ($Listen);
     }
     catch [System.Net.Sockets.SocketException]
     {
+        # this is an error we care about
         Write-Error "Unable to receive Syslog messages on $addr";
     }
     finally
@@ -79,3 +111,6 @@ function Receive-Syslog {
         $socket.Close();
     }
 }
+
+Set-Alias -Name txs -Value Send-Syslog
+Set-Alias -Name rxs -Value Receive-Syslog
