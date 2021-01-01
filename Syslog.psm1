@@ -59,6 +59,10 @@ function Receive-Syslog {
         [int]$Timeout = 0
     )
 
+    # .NET does not automatically infer address family from the address.
+    # It assumes you are using IPv4 when you try to join a group, but if you
+    # give it an IPv6 address then you'll get an error. This is why I explicitly
+    # specify the address family when instantiating the UdpClient object.
     if ($IPAddress) {
         $addr = [IPAddress]::Parse($IPAddress);
         $af = [System.Net.Sockets.AddressFamily]::InterNetwork;
