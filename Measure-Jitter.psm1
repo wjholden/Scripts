@@ -28,6 +28,13 @@ function Measure-Jitter {
     $var = $var / ($latency.Count - 1);
     $sd = [math]::Sqrt($var);
 
+    $diff = ($latency | % { $_ - $avg });
+    $diff3 = ($diff | % { [math]::Pow($_, 3) } | Measure-Object -Sum).Sum;
+    $diff4 = ($diff | % { [math]::Pow($_, 4) } | Measure-Object -Sum).Sum;
+    $ns = $latency.Length;
+    $skewness = $ns * $diff3 / ($ns-1) / ($ns-2) / [math]::Pow($sd, 3);
+    $kurtosis = $ns * ($ns+1) * $diff4 / ($ns-1) / ($ns-2) / ($ns-3) / [math]::Pow($sd, 4) - 3 * ($ns-1) * ($ns-1) / ($ns-2) / ($ns-3);
+
     # return the test result
     [pscustomobject]@{
         ComputerName=$ComputerName;
@@ -38,6 +45,8 @@ function Measure-Jitter {
         SD = $sd;
         CV = $sd / $avg;
         Sample = $latency;
+        Skewness = $skewness;
+        Kurtosis = $kurtosis
     }
 
 <#
