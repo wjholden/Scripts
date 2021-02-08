@@ -4,47 +4,40 @@ function Measure-Jitter {
         [ValidateRange(1,[int]::MaxValue)][int]$Count = 10
     )
 
-    # collect a sample of ping times
-    $latency = ping -n $Count $ComputerName | ForEach-Object {
-        Select-String -InputObject $_ -Pattern "Reply from" -SimpleMatch
-    } | ForEach-Object {
-        if ("$_" -match "time[<=](\d+)ms") {
-            [int]$Matches.1
-        }
-    }
+    # collect a sample of round-trip times (RTT) using ping
+    $rtt = (Test-Connection -ComputerName $ComputerName -Count $Count).Latency
 
     # return nothing if the host does not respond
-    if ($latency.Count -eq 0) {
+    if ($rtt.Count -eq 0) {
         Write-Warning "No response from $ComputerName";
         return;
     }
 
     # compute the mean ping time
-    $avg = ($latency | Measure-Object -Average).Average
+    $avg = ($rtt | Measure-Object -Average).Average
 
     # compute variance and standard deviation from sample
     $var = 0.0;
-    $latency | % { $var = $var + [math]::Pow($_ - $avg, 2) };
-    $var = $var / ($latency.Count - 1);
+    $rtt | % { $var = $var + [math]::Pow($_ - $avg, 2) };
+    $var = $var / ($rtt.Count - 1);
     $sd = [math]::Sqrt($var);
 
-    $diff = ($latency | % { $_ - $avg });
+    $diff = ($rtt | % { $_ - $avg });
     $diff3 = ($diff | % { [math]::Pow($_, 3) } | Measure-Object -Sum).Sum;
     $diff4 = ($diff | % { [math]::Pow($_, 4) } | Measure-Object -Sum).Sum;
-    $ns = $latency.Length;
+    $ns = $rtt.Length;
     $skewness = $ns * $diff3 / ($ns-1) / ($ns-2) / [math]::Pow($sd, 3);
     $kurtosis = $ns * ($ns+1) * $diff4 / ($ns-1) / ($ns-2) / ($ns-3) / [math]::Pow($sd, 4) - 3 * ($ns-1) * ($ns-1) / ($ns-2) / ($ns-3);
 
     # return the test result
     [pscustomobject]@{
         ComputerName=$ComputerName;
-        Responses=$latency.Count;
+        Responses=$rtt.Count;
         Pings = $Count;
-        "Loss (%)" = [math]::Round(100 * (1 - ($latency.Count / $Count)));
+        "Loss (%)" = [math]::Round(100 * (1 - ($rtt.Count / $Count)));
         Mean = $avg;
         SD = $sd;
-        CV = $sd / $avg;
-        Sample = $latency;
+        Sample = $rtt;
         Skewness = $skewness;
         Kurtosis = $kurtosis
     }
@@ -56,7 +49,7 @@ Computes statistics on network latency ("jitter") to a remote host using the bui
 
 .DESCRIPTION
 
-Measure-Jitter computes the mean, standard deviation, and coefficient of variation (CV) of jitter to among remote devices. A low CV indicates a "smooth" network with consistent latency. Lower CV is better.
+Measure-Jitter computes the mean, standard deviation, skewness, and kurtosis (the four "moments) in round-trip ping times (latency) to network devices. Lower is better in all four. Low standard deviation tells you that jitter (variation in latency) is very low). Negative skewness would be very strange. Large kurtosis may indicate outliers.
 
 William John Holden (https://wjholden.com)
 
@@ -68,7 +61,7 @@ Measure jitter to 10 hosts randomly selected from Active Directory. These measur
 
 .EXAMPLE
 
-Resolve-DnsName $env:USERDNSDOMAIN | % { Measure-Jitter $_.IPAddress } | ft ComputerName, Mean, CV
+Resolve-DnsName $env:USERDNSDOMAIN | % { Measure-Jitter $_.IPAddress } | ft ComputerName, Mean, SD
 
 Measure jitter to all domain controllers in series.
 
@@ -81,11 +74,11 @@ $jobs = Get-ADComputer -Filter * | ForEach-Object {
         Measure-Jitter -ComputerName $ComputerName -Count 100
     }
 }
-Receive-Job -Job $jobs -Keep | Sort-Object CV -Descending | Select-Object * -ExcludeProperty RunspaceId | Format-Table
+Receive-Job -Job $jobs -Keep | Sort-Object Mean -Descending | Select-Object * -ExcludeProperty RunspaceId | Format-Table
 
 Measure jitter, in parallel, to all hosts in Active Directory. Creating jobs is not fast. See the next example if you are using PowerShell 7.
 
-I have tried and failed to pass the Measure-Jitter function lambda as a parameter to Start-Job. You can paste the Measure-Jitter function definition into the -InitializationScript block if loading modules is problematic.
+You can paste the Measure-Jitter function definition into the -InitializationScript block if loading modules is problematic.
 
 .EXAMPLE
 
